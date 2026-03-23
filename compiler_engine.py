@@ -1,6 +1,7 @@
 """Compiler engine: tokens, AST, diagnostics via libclang."""
 
 import os
+import re
 from typing import Optional
 
 from utils import find_libclang, get_lines_context
@@ -11,17 +12,51 @@ def _ensure_libclang():
         raise RuntimeError("Could not find libclang. Install clang or set library path.")
 
 
+def _strip_includes(source: str) -> tuple[str, dict[int, int]]:
+    """
+    Remove #include lines from source before parsing to avoid cascading
+    header-not-found errors that pollute the diagnostic output.
+
+    Returns
+    -------
+    (stripped_source, line_map)
+        stripped_source : source with #include lines blanked (replaced with
+                          empty lines so line numbers of remaining code are preserved).
+        line_map        : mapping from stripped-source line numbers to original
+                          line numbers (identity map when no lines are removed,
+                          which is always the case here since we blank rather
+                          than delete).
+    """
+    lines = source.splitlines(keepends=True)
+    cleaned = []
+    for line in lines:
+        if re.match(r"^\s*#\s*include\s*[<\"]", line):
+            # Replace with a blank line so all line numbers stay the same
+            cleaned.append("\n")
+        else:
+            cleaned.append(line)
+    return "".join(cleaned)
+
+
 def parse_source(source: str, filename: str = "input.cpp") -> "tuple":
     """Parse C++ source and return (tu, diag_list)."""
     _ensure_libclang()
     from clang.cindex import Index, TranslationUnit
-    
+
     args = ["-std=c++17", "-fsyntax-only", "-Wno-everything"]
     if os.name == "nt":
         args.extend(["-fno-ms-compatibility", "-fms-compatibility-version=19"])
-    
+
+    # Strip #include lines so missing system headers do not generate
+    # spurious diagnostics that inflate the error count.
+    clean_source = _strip_includes(source)
+
     index = Index.create()
-    tu = index.parse(filename, args=args, unsaved_files=[(filename, source)])
+    tu = index.parse(
+        filename,
+        args=args,
+        unsaved_files=[(filename, clean_source)],
+    )
     return tu, list(tu.diagnostics)
 
 
@@ -57,13 +92,13 @@ def _classify_token(kind_str: str) -> str:
 
 
 def _build_ast_node(cursor, depth: int = 0) -> dict:
-    kind =str(cursor.kind).replace("CursorKind.", "")
-    spelling= cursor.spelling or cursor.displayname or ""
+    kind = str(cursor.kind).replace("CursorKind.", "")
+    spelling = cursor.spelling or cursor.displayname or ""
     loc = cursor.location
-    line =loc.line if loc else 0
-    col =loc.column if loc else 0
-    
-    node ={
+    line = loc.line if loc else 0
+    col = loc.column if loc else 0
+
+    node = {
         "kind": kind,
         "spelling": spelling,
         "line": line,
@@ -71,69 +106,74 @@ def _build_ast_node(cursor, depth: int = 0) -> dict:
         "depth": depth,
         "children": [],
     }
-    
+
     for child in cursor.get_children():
         node["children"].append(_build_ast_node(child, depth + 1))
-    
+
     return node
 
 
 def build_ast(tu) -> list:
     """Build AST as list of root nodes."""
-    root =tu.cursor
+    root = tu.cursor
     return [_build_ast_node(root)]
 
 
 def ast_to_display_string(nodes: list, indent: str = "") -> str:
     """Convert AST nodes to clean tree display string."""
-    lines= []
+    lines = []
     for node in nodes:
-        kind =node.get("kind","?")
-        spelling =node.get("spelling","")
-        line= node.get("line",0)
-        col= node.get("column",0)
-        part= f"{kind}"
+        kind = node.get("kind", "?")
+        spelling = node.get("spelling", "")
+        line = node.get("line", 0)
+        col = node.get("column", 0)
+        part = f"{kind}"
         if spelling:
-            part+= f' "{spelling}"'
+            part += f' "{spelling}"'
         if line > 0:
             part += f" [L{line}:{col}]"
         lines.append(indent + part)
         if node.get("children"):
-            lines.append(ast_to_display_string(node["children"],indent+"  "))
+            lines.append(ast_to_display_string(node["children"], indent + "  "))
     return "\n".join(lines)
 
 
-def _nearest_ast_node(nodes: list,target_line: int,target_col: int,best: Optional[dict]= None) -> Optional[dict]:
+def _nearest_ast_node(
+    nodes: list, target_line: int, target_col: int, best: Optional[dict] = None
+) -> Optional[dict]:
     def score(n):
-        nl, nc = n.get("line", 0), n.get("column",0)
-        if nl<=0:
+        nl, nc = n.get("line", 0), n.get("column", 0)
+        if nl <= 0:
             return float("inf")
-        line_dist= abs(nl - target_line)
-        col_dist =abs(nc - target_col) if nl == target_line else 999
+        line_dist = abs(nl - target_line)
+        col_dist = abs(nc - target_col) if nl == target_line else 999
         return (line_dist, col_dist)
-    
+
     for node in nodes:
-        if node.get("line",0) > 0:
+        if node.get("line", 0) > 0:
             if best is None or score(node) < score(best):
-                best =node
-        best= _nearest_ast_node(node.get("children",[]),target_line, target_col, best) or best
+                best = node
+        best = (
+            _nearest_ast_node(node.get("children", []), target_line, target_col, best)
+            or best
+        )
     return best
 
 
 def analyze(source: str) -> dict:
     """Full analysis: tokens, AST, diagnostics, error context."""
     result = {
-        "tokens":[],
-        "token_rows":[],
+        "tokens": [],
+        "token_rows": [],
         "ast": [],
-        "ast_display":"",
+        "ast_display": "",
         "errors": [],
-        "success":False,
+        "success": False,
     }
-    
+
     try:
         tu, diagnostics = parse_source(source)
-        
+
         result["tokens"] = extract_tokens(tu)
         result["token_rows"] = [
             {
@@ -145,47 +185,58 @@ def analyze(source: str) -> dict:
             }
             for t in result["tokens"]
         ]
-        
+
         ast_nodes = build_ast(tu)
         result["ast"] = ast_nodes
         result["ast_display"] = ast_to_display_string(ast_nodes)
-        
+
+        # Severity: 3 = error, 4 = fatal. We capture both.
         for diag in diagnostics:
             if diag.severity >= 3:
-                loc =diag.location
-                line =loc.line if loc else 0
-                col= loc.column if loc else 0
-                msg= str(diag.spelling)
-                
-                before,err_line, after = get_lines_context(source, line)
-                
-                nearest =_nearest_ast_node(ast_nodes, line, col)
+                loc = diag.location
+                line = loc.line if loc else 0
+                col = loc.column if loc else 0
+                msg = str(diag.spelling)
+
+                # Skip diagnostics that have no useful location (e.g. from
+                # missing headers that were already stripped).
+                if line == 0 and not msg:
+                    continue
+
+                before, err_line, after = get_lines_context(source, line)
+
+                nearest = _nearest_ast_node(ast_nodes, line, col)
                 ast_info = ""
                 if nearest:
-                    ast_info =f"{nearest.get('kind', '?')}"
+                    ast_info = f"{nearest.get('kind', '?')}"
                     if nearest.get("spelling"):
-                        ast_info += f' "{nearest.get('spelling', '')}"'
-                
-                result["errors"].append({
-                    "message": msg,
-                    "line": line,
-                    "column": col,
-                    "context_before": before,
-                    "error_line": err_line,
-                    "context_after": after,
-                    "ast_node": ast_info,
-                })
-        
+                        ast_info += f' "{nearest.get("spelling", "")}"'
+
+                result["errors"].append(
+                    {
+                        "message": msg,
+                        "line": line,
+                        "column": col,
+                        "context_before": before,
+                        "error_line": err_line,
+                        "context_after": after,
+                        "ast_node": ast_info,
+                    }
+                )
+
         result["success"] = True
+
     except Exception as e:
-        result["errors"] = [{
-            "message": str(e),
-            "line": 0,
-            "column": 0,
-            "context_before": [],
-            "error_line": "",
-            "context_after": [],
-            "ast_node": "",
-        }]
-    
+        result["errors"] = [
+            {
+                "message": str(e),
+                "line": 0,
+                "column": 0,
+                "context_before": [],
+                "error_line": "",
+                "context_after": [],
+                "ast_node": "",
+            }
+        ]
+
     return result
