@@ -1,3 +1,6 @@
 graphviz
 clang
 streamlit
+codecarbon
+psutil
+pandas

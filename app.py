@@ -10,11 +10,12 @@ from error_classifier import classify_error
 from ast_visualizer import visualize_ast
 from explanation_engine import explain_errors
 from security_analyzer import analyze_security
+from energy_profiler import profile_code
 
 # ── page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Compiler Error Analyzer — NITW",
-    page_icon="🔬",
+    page_icon=" ",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -221,6 +222,17 @@ section[data-testid="stSidebar"] .stButton button:hover { opacity: 0.88 !importa
 .src-llama3    { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
 .src-rule      { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
+/* ── severity pills on diagnostics tab ── */
+.severity-pill {
+    display: inline-block; font-size: 9.5px; font-weight: 700;
+    font-family: 'Syne', sans-serif; padding: 2px 9px; border-radius: 20px;
+    margin-left: 5px; vertical-align: middle; letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+.sev-pill-high   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.sev-pill-medium { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+.sev-pill-low    { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+
 /* ── security panel ── */
 .security-panel {
     background: #ffffff; border: 1px solid #eaecf4;
@@ -382,6 +394,15 @@ def _source_tag(src: str) -> str:
     return '<span class="exp-source-tag src-rule">Rule-based</span>'
 
 
+def _severity_pill(sev: str) -> str:
+    cls = {
+        "High":   "sev-pill-high",
+        "Medium": "sev-pill-medium",
+        "Low":    "sev-pill-low",
+    }.get(sev, "sev-pill-low")
+    return f'<span class="severity-pill {cls}">{sev} Severity</span>'
+
+
 # ── sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
@@ -518,12 +539,19 @@ if analyze_clicked and code.strip():
         unsafe_allow_html=True,
     )
 
+    if n_err == 0:
+        with st.spinner("Running Code & Gathering Energy/Performance Profile..."):
+            profile_res = profile_code(code.strip())
+    else:
+        profile_res = None
+
     # ── tabs ───────────────────────────────────────────────────────────────
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "Tokens & AST",
         "Visual Graph",
         "Diagnostics & Explanations",
         "Security Analysis",
+        "Environmental Impact"
     ])
 
     # ══════════════════════════════════════════════════════════════════════
@@ -648,6 +676,7 @@ if analyze_clicked and code.strip():
                 )
                 diff_pill = _difficulty_pill(exp.difficulty)
                 src_tag   = _source_tag(exp.explanation_source)
+                sev_pill  = _severity_pill(getattr(exp, "severity", "Low"))
 
                 ctx_lines = []
                 for ln, txt in exp.context_before:
@@ -668,8 +697,9 @@ if analyze_clicked and code.strip():
                     f'    <span class="err-num">Error {i + 1}</span>'
                     f'    <span class="err-loc">Line {exp.line}, Col {exp.column}</span>'
                     f'    <span class="badge {badge_cls}">{exp.category}</span>'
-                    f'    {diff_pill}{src_tag}'
+                    f'    {sev_pill}{diff_pill}{src_tag}'
                     f'  </div>'
+                    f'  <div style="font-family:Syne,sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#c53030;margin-top:0.4rem;">The Exact Error</div>'
                     f'  <div class="err-msg">{exp.raw_message}</div>'
                     f'  {ast_html}'
                     f'</div>',
@@ -682,7 +712,7 @@ if analyze_clicked and code.strip():
                 if exp.natural_language:
                     st.markdown(
                         f'<div class="explanation-box">'
-                        f'  <div class="exp-label">What went wrong</div>'
+                        f'  <div class="exp-label">The Explanation</div>'
                         f'  <div class="exp-text">{exp.natural_language}</div>'
                         f'</div>',
                         unsafe_allow_html=True,
@@ -691,7 +721,7 @@ if analyze_clicked and code.strip():
                 if exp.suggestion:
                     st.markdown(
                         f'<div class="suggestion-box">'
-                        f'  <div class="sug-label">How to fix it</div>'
+                        f'  <div class="sug-label">The Fix</div>'
                         f'  <div class="sug-text">{exp.suggestion}</div>'
                         f'</div>',
                         unsafe_allow_html=True,
@@ -773,6 +803,51 @@ if analyze_clicked and code.strip():
             )
 
         st.markdown("</div>", unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════════════════════════════════
+    # TAB 5 — Environmental Impact
+    # ══════════════════════════════════════════════════════════════════════
+    with tab5:
+        if n_err > 0:
+            st.warning("Fix compiler errors first before CodeCarbon and Pinpoint can profile execution.")
+        elif profile_res:
+            if not profile_res.success:
+                st.error("Execution or Compilation failed during profiling phase.")
+                st.code(profile_res.error_msg)
+            else:
+                st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                st.markdown('<div class="section-title">Pinpoint & RAPL Resource Metrics</div>', unsafe_allow_html=True)
+                
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Execution Time", f"{profile_res.execution_time_ms:.2f} ms")
+                m2.metric("Memory Peak", f"{profile_res.memory_peak_mb:.2f} MB")
+                m3.metric("CPU Usage", f"{profile_res.cpu_usage_pct:.1f}%")
+                m4.metric("Energy Consumed", f"{profile_res.energy_joules:.4f} Joules")
+                
+                st.markdown("<hr class='fancy-div'>", unsafe_allow_html=True)
+                
+                st.markdown('<div class="section-title">CodeCarbon Footprint Tracker</div>', unsafe_allow_html=True)
+                
+                # Plotly/Altair or native chart
+                import pandas as pd
+                em_val = profile_res.emissions_g_co2
+                df = pd.DataFrame({
+                    "Metric": ["Estimated CO2 Emissions (g)"],
+                    "Value": [em_val]
+                })
+                
+                em_col, ch_col = st.columns([1, 2])
+                with em_col:
+                    st.metric("Total CO₂e", f"{em_val:.6f} g")
+                    st.info("Calculated using offline tracking or CPU RAPL extrapolations representing the specific isolated carbon cost of compiling and running this C++ block.")
+                with ch_col:
+                    st.bar_chart(df.set_index("Metric"))
+                
+                if profile_res.stdout:
+                    st.markdown("**(stdout)**")
+                    st.code(profile_res.stdout)
+
+                st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ── empty / idle state ─────────────────────────────────────────────────────────
