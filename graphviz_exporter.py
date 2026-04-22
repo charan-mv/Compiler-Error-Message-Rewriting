@@ -6,8 +6,8 @@ Graphviz DOT file.
 
 Styling rules
 -------------
-Normal node  : dark background, light blue text (high contrast)
-Error node   : dark red background, bright red border, white text
+Normal node  : white background, navy border, dark text (light mode)
+Error node   : pale red background, vivid red border, dark red text
 """
 
 from __future__ import annotations
@@ -15,21 +15,20 @@ from typing import Any
 
 
 # ---------------------------------------------------------------------------
-# Styling constants
+# Styling constants  (light-mode palette)
 # ---------------------------------------------------------------------------
 
-# Normal node: dark navy box, white text for clear readability
+# Normal node: clean white fill, indigo border, dark charcoal text
 _NORMAL_ATTRS = (
     'shape=box, fontname="Courier", fontsize=11, '
-    'color="#4a7aad", fillcolor="#1c2333", fontcolor="#e6edf3", '
+    'color="#3b5bdb", fillcolor="#ffffff", fontcolor="#1a1a2e", '
     'style="filled,rounded"'
 )
 
-# Error node: vivid red border, dark red fill, bright white text so the
-# label is always readable even at small font sizes
+# Error node: pale red fill, bold crimson border, dark red text
 _ERROR_ATTRS = (
     'shape=box, fontname="Courier", fontsize=11, '
-    'color="#f85149", fillcolor="#4a1515", fontcolor="#ffffff", '
+    'color="#c0392b", fillcolor="#fdf0f0", fontcolor="#7b0000", '
     'style="filled,rounded", penwidth=2.5'
 )
 
@@ -40,14 +39,14 @@ digraph AST {
         splines=ortho,
         nodesep=0.6,
         ranksep=0.9,
-        bgcolor="#0d1117",
+        bgcolor="#ffffff",
         fontname="Courier",
-        fontcolor="#e6edf3",
+        fontcolor="#1a1a2e",
         pad=0.5,
         dpi=150
     ];
-    node  [margin="0.2,0.14", fontcolor="#e6edf3", color="#4a7aad", fillcolor="#1c2333", style="filled,rounded"];
-    edge  [arrowsize=0.7, color="#6e7681", arrowhead=open];
+    node  [margin="0.2,0.14", fontcolor="#1a1a2e", color="#3b5bdb", fillcolor="#ffffff", style="filled,rounded"];
+    edge  [arrowsize=0.7, color="#4a5568", arrowhead=open];
 """
 
 _GRAPH_FOOTER = "}\n"

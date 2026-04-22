@@ -25,25 +25,25 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; background: #f8f9fc; color: #1a202c; }
 
 /* ── sidebar ── */
 section[data-testid="stSidebar"] {
-    background: #0a0a0f;
-    border-right: 1px solid rgba(139,92,246,0.18);
+    background: #f0f2f8;
+    border-right: 1px solid #d0d7e8;
 }
-section[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+section[data-testid="stSidebar"] * { color: #1a202c !important; }
 section[data-testid="stSidebar"] .stTextArea textarea {
-    background: rgba(139,92,246,0.06) !important;
-    border: 1px solid rgba(139,92,246,0.25) !important;
-    color: #a5f3fc !important;
+    background: #ffffff !important;
+    border: 1px solid #c4cbe0 !important;
+    color: #1a202c !important;
     font-family: 'JetBrains Mono', monospace !important;
     font-size: 12.5px !important;
     border-radius: 10px !important;
     line-height: 1.7 !important;
 }
 section[data-testid="stSidebar"] .stButton button {
-    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%) !important;
+    background: linear-gradient(135deg, #4f46e5 0%, #3b5bdb 100%) !important;
     color: white !important;
     border: none !important;
     font-weight: 600 !important;
@@ -60,25 +60,25 @@ section[data-testid="stSidebar"] .stButton button:hover { opacity: 0.88 !importa
 
 /* ── page header ── */
 .page-header {
-    background: linear-gradient(135deg, #0a0a0f 0%, #12082a 45%, #0d0d1f 100%);
-    border: 1px solid rgba(139,92,246,0.22);
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 45%, #ede9fe 100%);
+    border: 1px solid #c7d2fe;
     border-radius: 18px;
     padding: 1.6rem 2rem;
     margin-bottom: 1.4rem;
     display: flex;
     align-items: center;
     gap: 1.2rem;
-    box-shadow: 0 8px 40px rgba(124,58,237,0.18), 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: 0 8px 40px rgba(79,70,229,0.10), 0 2px 8px rgba(0,0,0,0.06);
 }
 .page-header h1 {
     font-family: 'Syne', sans-serif;
     font-size: 1.65rem;
     font-weight: 800;
-    color: #fff;
+    color: #1e1b4b;
     margin: 0;
     letter-spacing: -0.5px;
 }
-.page-header p { font-size: 0.82rem; color: #94a3b8; margin: 0.25rem 0 0; letter-spacing: 0.2px; }
+.page-header p { font-size: 0.82rem; color: #4b5563; margin: 0.25rem 0 0; letter-spacing: 0.2px; }
 
 /* ── stats ── */
 .stats-row { display: flex; gap: 0.65rem; margin-bottom: 1.3rem; flex-wrap: wrap; }
@@ -118,7 +118,7 @@ section[data-testid="stSidebar"] .stButton button:hover { opacity: 0.88 !importa
 
 /* ── AST tree ── */
 .ast-tree-wrap {
-    background: #0d1117;
+    background: #ffffff;
     border-radius: 10px;
     padding: 1rem 1.2rem;
     overflow: auto;
@@ -126,18 +126,18 @@ section[data-testid="stSidebar"] .stButton button:hover { opacity: 0.88 !importa
     font-size: 11.5px;
     line-height: 1.75;
     max-height: 440px;
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid #d0d7e8;
 }
 .ast-node  { display: block; white-space: pre; }
-.ast-kind  { color: #79c0ff; font-weight: 600; }
-.ast-spell { color: #ffa657; }
-.ast-loc   { color: #484f58; font-size: 10.5px; }
-.ast-error-node .ast-kind  { color: #ff7b72 !important; font-weight: 700 !important; }
-.ast-error-node .ast-spell { color: #ffa198 !important; }
-.ast-error-node .ast-loc   { color: #ff7b72 !important; }
+.ast-kind  { color: #2563eb; font-weight: 600; }
+.ast-spell { color: #b45309; }
+.ast-loc   { color: #6b7280; font-size: 10.5px; }
+.ast-error-node .ast-kind  { color: #c0392b !important; font-weight: 700 !important; }
+.ast-error-node .ast-spell { color: #9b1c1c !important; }
+.ast-error-node .ast-loc   { color: #c0392b !important; }
 .ast-err-badge {
     display: inline-block;
-    background: #ff7b72; color: #0d1117;
+    background: #dc2626; color: #ffffff;
     font-size: 8.5px; font-weight: 700;
     padding: 1px 5px; border-radius: 3px;
     margin-left: 5px; vertical-align: middle; letter-spacing: 0.5px;
@@ -308,37 +308,37 @@ section[data-testid="stSidebar"] .stButton button:hover { opacity: 0.88 !importa
 
 /* ── welcome ── */
 .welcome-card {
-    background: linear-gradient(135deg, #0a0a0f, #12082a, #0d1117);
-    border: 1px solid rgba(139,92,246,0.25); border-radius: 18px;
+    background: linear-gradient(135deg, #eef2ff, #f0f9ff, #f5f3ff);
+    border: 1px solid #c7d2fe; border-radius: 18px;
     padding: 3rem 2.5rem; text-align: center;
-    box-shadow: 0 12px 48px rgba(124,58,237,0.15);
+    box-shadow: 0 12px 48px rgba(79,70,229,0.10);
 }
 .welcome-card h2 {
-    font-family: 'Syne', sans-serif; color: #fff;
+    font-family: 'Syne', sans-serif; color: #1e1b4b;
     font-size: 1.7rem; font-weight: 800; margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #a78bfa, #38bdf8);
+    background: linear-gradient(135deg, #4f46e5, #0ea5e9);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
-.welcome-card p { color: #94a3b8; font-size: 0.9rem; line-height: 1.7; }
+.welcome-card p { color: #374151; font-size: 0.9rem; line-height: 1.7; }
 .feature-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 0.75rem; margin-top: 1.8rem;
 }
 .feature-item {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(139,92,246,0.18);
+    background: #ffffff; border: 1px solid #c7d2fe;
     border-radius: 10px; padding: 0.85rem 1rem;
-    font-size: 0.82rem; color: #c4b5fd; text-align: left; line-height: 1.5;
+    font-size: 0.82rem; color: #374151; text-align: left; line-height: 1.5;
 }
 .feature-item strong {
-    display: block; color: #a78bfa; font-family: 'Syne', sans-serif;
+    display: block; color: #4f46e5; font-family: 'Syne', sans-serif;
     margin-bottom: 2px; font-size: 0.77rem; text-transform: uppercase; letter-spacing: 0.5px;
 }
 
 /* ── ollama hint ── */
 .ollama-hint {
-    background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25);
+    background: #f0fdf4; border: 1px solid #86efac;
     border-radius: 8px; padding: 0.55rem 0.85rem;
-    font-size: 0.74rem; color: #86efac; line-height: 1.6; margin-top: 0.4rem;
+    font-size: 0.74rem; color: #166534; line-height: 1.6; margin-top: 0.4rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -407,11 +407,11 @@ def _severity_pill(sev: str) -> str:
 with st.sidebar:
     st.markdown(
         "<div style='font-family:Syne,sans-serif;font-size:1.1rem;font-weight:800;"
-        "color:#a78bfa;letter-spacing:-0.3px;margin-bottom:0.2rem;'>NITW — Compiler Analyzer</div>",
+        "color:#4f46e5;letter-spacing:-0.3px;margin-bottom:0.2rem;'>NITW — Compiler Analyzer</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div style='font-size:0.75rem;color:#64748b;margin-bottom:0.8rem;'>"
+        "<div style='font-size:0.75rem;color:#374151;margin-bottom:0.8rem;'>"
         "National Institute of Technology, Warangal<br>"
         "libclang · Graphviz · Llama 3 · Security Analysis</div>",
         unsafe_allow_html=True,
@@ -420,13 +420,28 @@ with st.sidebar:
     st.markdown("**C++ Source Code**")
 
     DEFAULT_CODE = """\
+#include <iostream>
+using namespace std;
+int //findSum(int arr[], int n) {
+    int sum = 0;
+    for (int i = 0; i < n; i++) {
+        sum += arr[i];
+    }
+    return sum;
+}
+
 int main() {
-    char buf[8];
-    gets(buf);
-    strcpy(buf, "overflow example");
-    int x = 10
-    int y = x + 1
-    printf(buf);
+    int n;
+    cout << "Enter number of elements: "
+    cin >> n;
+    int arr[100]; 
+    cout << "Enter elements:\n";
+    for (int i = 0; i < n; i++) {
+        cin >> arr[i];
+    }
+    int result = findSum(arr, n);
+    cout << "Sum of elements = " << result << endl;
+
     return 0;
 }"""
 
@@ -465,7 +480,7 @@ int main() {
     analyze_clicked = st.button("Analyze", type="primary", use_container_width=True)
 
     st.markdown(
-        "<div style='font-size:0.72rem;color:#475569;line-height:1.7;margin-top:0.6rem;'>"
+        "<div style='font-size:0.72rem;color:#374151;line-height:1.7;margin-top:0.6rem;'>"
         "Compiler Design Project — NITW<br>"
         "libclang · Graphviz · Llama 3 · Security Scorer"
         "</div>",
@@ -592,7 +607,7 @@ if analyze_clicked and code.strip():
                 )
                 if error_lines:
                     st.markdown(
-                        f"<div style='font-size:0.76rem;color:#e53e3e;margin-top:0.4rem;'>"
+                        f"<div style='font-size:0.76rem;color:#c0392b;margin-top:0.4rem;'>"
                         f"🔴 Error lines highlighted: {sorted(error_lines)}</div>",
                         unsafe_allow_html=True,
                     )
@@ -623,7 +638,7 @@ if analyze_clicked and code.strip():
                 unsafe_allow_html=True,
             )
             st.markdown(
-                f"<div style='font-size:0.76rem;color:#718096;margin-top:0.5rem;text-align:center;'>"
+                f"<div style='font-size:0.76rem;color:#374151;margin-top:0.5rem;text-align:center;'>"
                 f"🔴 Red node = error &nbsp;·&nbsp; Blue node = normal &nbsp;·&nbsp; "
                 f"Error lines: {sorted(vis.error_lines) if vis.error_lines else 'none'}"
                 f"</div>",
@@ -766,7 +781,7 @@ if analyze_clicked and code.strip():
             st.markdown(
                 f"<div style='font-family:Syne,sans-serif;font-size:0.72rem;"
                 f"font-weight:700;text-transform:uppercase;letter-spacing:1.3px;"
-                f"color:#8b5cf6;margin-bottom:0.8rem;'>"
+                f"color:#4f46e5;margin-bottom:0.8rem;'>"
                 f"Findings ({len(sec_report.findings)})</div>",
                 unsafe_allow_html=True,
             )

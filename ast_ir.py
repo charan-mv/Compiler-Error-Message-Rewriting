@@ -6,7 +6,7 @@ Internal Representation (IR) for AST visualization.
 Converts the existing libclang AST JSON tree (produced by _build_ast_node)
 into a flat, visualization-ready IR structure. Each IR node carries:
   - a unique integer id
-  - a human-readable label
+  - a human-readable label  (shows actual variable names, values, types)
   - an is_error flag  (only set on the deepest node per error line)
   - a list of child IR node ids (for edge generation)
 
@@ -17,6 +17,101 @@ same line. This prevents every ancestor on the same line from turning red.
 
 from __future__ import annotations
 from typing import Any
+
+
+# ---------------------------------------------------------------------------
+# Kind → friendly display name mapping
+# ---------------------------------------------------------------------------
+
+# Maps verbose libclang kind names to short, readable display names.
+_KIND_DISPLAY: dict[str, str] = {
+    # Declarations
+    "TranslationUnitDecl":          "TranslationUnit",
+    "FunctionDecl":                 "FunctionDecl",
+    "ParmDecl":                     "Param",
+    "VarDecl":                      "VarDecl",
+    "FieldDecl":                    "Field",
+    "TypedefDecl":                  "Typedef",
+    "RecordDecl":                   "Record",
+    "StructDecl":                   "Struct",
+    "ClassDecl":                    "Class",
+    "EnumDecl":                     "Enum",
+    "EnumConstantDecl":             "EnumConst",
+    "NamespaceDecl":                "Namespace",
+    "UsingDirectiveDecl":           "UsingDirective",
+    # Statements
+    "CompoundStmt":                 "Block {}",
+    "ReturnStmt":                   "Return",
+    "IfStmt":                       "If",
+    "ForStmt":                      "ForLoop",
+    "WhileStmt":                    "WhileLoop",
+    "DoStmt":                       "DoWhile",
+    "SwitchStmt":                   "Switch",
+    "CaseStmt":                     "Case",
+    "DefaultStmt":                  "Default",
+    "BreakStmt":                    "Break",
+    "ContinueStmt":                 "Continue",
+    "NullStmt":                     "NullStmt",
+    "DeclStmt":                     "DeclStmt",
+    "GotoStmt":                     "Goto",
+    # Expressions
+    "CallExpr":                     "CallExpr",
+    "DeclRefExpr":                  "VarRef",
+    "MemberRefExpr":                "MemberRef",
+    "BinaryOperator":               "BinaryOp",
+    "UnaryOperator":                "UnaryOp",
+    "CompoundAssignOperator":       "CompoundAssign",
+    "ConditionalOperator":          "TernaryOp",
+    "CXXMemberCallExpr":            "MethodCall",
+    "CXXOperatorCallExpr":          "OperatorCall",
+    "CXXConstructExpr":             "ConstructExpr",
+    "CXXDeleteExpr":                "DeleteExpr",
+    "CXXNewExpr":                   "NewExpr",
+    "CXXThisExpr":                  "this",
+    "CXXStaticCastExpr":            "static_cast",
+    "CXXReinterpretCastExpr":       "reinterpret_cast",
+    "CXXDynamicCastExpr":           "dynamic_cast",
+    "CXXConstCastExpr":             "const_cast",
+    "ImplicitCastExpr":             "ImplicitCast",
+    "CStyleCastExpr":               "CStyleCast",
+    "ArraySubscriptExpr":           "ArrayIndex",
+    "InitListExpr":                 "InitList",
+    "ParenExpr":                    "Paren ()",
+    "UnaryExprOrTypeTraitExpr":     "sizeof/alignof",
+    "LambdaExpr":                   "Lambda []",
+    # Literals
+    "IntegerLiteral":               "IntLiteral",
+    "FloatingLiteral":              "FloatLiteral",
+    "StringLiteral":                "StringLiteral",
+    "CharacterLiteral":             "CharLiteral",
+    "CXXBoolLiteralExpr":           "BoolLiteral",
+    "CXXNullPtrLiteralExpr":        "nullptr",
+    # Types / misc
+    "TypeRef":                      "TypeRef",
+    "TemplateRef":                  "TemplateRef",
+    "NamespaceRef":                 "NamespaceRef",
+    "OverloadedDeclRef":            "OverloadedRef",
+    "NoDeclFound":                  "NoDeclFound",
+}
+
+# Kinds whose spelling is the most important thing to show prominently
+_SPELLING_PRIMARY_KINDS = {
+    "FunctionDecl", "ParmDecl", "VarDecl", "FieldDecl", "TypedefDecl",
+    "EnumConstantDecl", "RecordDecl", "StructDecl", "ClassDecl", "EnumDecl",
+    "NamespaceDecl", "DeclRefExpr", "MemberRefExpr", "TypeRef",
+    "TemplateRef", "NamespaceRef", "CallExpr", "CXXMemberCallExpr",
+}
+
+# Kinds that carry a meaningful operator / value in their spelling
+_OPERATOR_KINDS = {
+    "BinaryOperator", "UnaryOperator", "CompoundAssignOperator",
+}
+
+# Kinds that are literal values — show the raw value prominently
+_LITERAL_KINDS = {
+    "IntegerLiteral", "FloatingLiteral", "StringLiteral",
+    "CharacterLiteral", "CXXBoolLiteralExpr",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -61,21 +156,62 @@ class _IRBuilder:
 
     def _build_label(self, ast_node: dict[str, Any]) -> str:
         """
-        Label shown inside the Graphviz box:
-            <kind>
-            (<spelling>)   [only if non-empty]
+        Build a rich, informative label for a Graphviz node box.
+
+        Strategy:
+          - Use a friendly short name (from _KIND_DISPLAY) for the kind.
+          - For declarations / refs: show the actual identifier name prominently.
+          - For literals: show the actual value prominently.
+          - For operators: show the operator symbol.
+          - Always append the source location as a small footer.
+
+        Format (varies by kind):
+            <FriendlyKind>
+            name: <identifier>         ← for decls / refs
+          OR
+            <FriendlyKind>
+            = <value>                  ← for literals
+          OR
+            <FriendlyKind>
+            op: <symbol>               ← for operators
             line:<n>
         """
-        kind: str = ast_node.get("kind", "?")
-        spelling: str = ast_node.get("spelling", "")
+        raw_kind: str = ast_node.get("kind", "?")
+        spelling: str = ast_node.get("spelling", "").strip()
         line: int = ast_node.get("line", 0)
-        parts = [kind]
-        if spelling:
-            # Truncate very long spellings so the node box stays readable
-            s = spelling if len(spelling) <= 24 else spelling[:21] + "..."
-            parts.append(f"({s})")
+
+        # Friendly display name for the kind
+        display_kind = _KIND_DISPLAY.get(raw_kind, raw_kind)
+
+        parts: list[str] = [display_kind]
+
+        if raw_kind in _LITERAL_KINDS:
+            # Show the literal value
+            if spelling:
+                val = spelling if len(spelling) <= 20 else spelling[:17] + "..."
+                parts.append(f"= {val}")
+
+        elif raw_kind in _OPERATOR_KINDS:
+            # Show the operator symbol
+            if spelling:
+                parts.append(f"op: {spelling}")
+
+        elif raw_kind in _SPELLING_PRIMARY_KINDS:
+            # Show the identifier / function name
+            if spelling:
+                name = spelling if len(spelling) <= 22 else spelling[:19] + "..."
+                parts.append(f"name: {name}")
+
+        else:
+            # Generic fallback: show spelling if present and short
+            if spelling and len(spelling) <= 28:
+                parts.append(spelling)
+            elif spelling:
+                parts.append(spelling[:25] + "...")
+
         if line > 0:
             parts.append(f"line:{line}")
+
         return "\n".join(parts)
 
     def visit(self, ast_node: dict[str, Any]) -> int:
